@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&display=swap" rel="stylesheet">
+  <title>Samarth and Mitali's Memory Map</title>
+  <style>
+    * {
+      font-family: "Pixelify Sans", monospace;
+    }
+
+    body {
+      background: #ff7aa8; /* your pink */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    #map-layer {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 0;
+    }
+
+    /* Blur map for scenes 1 & 2 */
+    body:not(.show-map) #map-layer {
+      filter: blur(6px);
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    /* Map active */
+    body.show-map #map-layer {
+      filter: none;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* .scene {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ff7aa8;
+      transition: opacity 1s ease;
+    } */
+
+    .scene {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      transition: opacity 1s ease;
+    }
+
+
+    .hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .active {
+      opacity: 1;
+    }
+
+    #envelope {
+      width: 200px;
+      cursor: pointer;
+      image-rendering: pixelated;
+      transition: transform 0.4s ease;
+    }
+
+    #envelope.open {
+      transform: scale(1.05);
+    }
+
+    /* .envelope-container {
+      position: relative;
+      width: 320px;
+      height: 300px;
+    } */
+
+    .envelope-container {
+      position: relative;
+      width: 300px;
+      height: 200px;
+
+      /* THIS is the key */
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+
+    /* Letter starts hidden inside envelope */
+    /* .letter-content {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%) translateY(40px);
+      opacity: 0;
+      transition: transform 1s steps(6), opacity 0.5s;
+      z-index: 0;
+    } */
+     
+     .letter-content {
+      position: absolute;
+      bottom: 110px;  /* inside envelope */
+      left: 50%;
+      transform: translateX(-50%) translateY(40px);
+      opacity: 0;
+      transition: transform 1s steps(6), opacity 0.5s;
+      z-index: 2;
+    }
+
+
+    .letter-text {
+      width: 260px;
+      image-rendering: pixelated;
+    }
+
+    /* Envelope sits on top */
+    /* #open-envelope-canvas {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      z-index: 2;
+    } */
+     #open-envelope-canvas {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1;
+    }
+
+
+    /* When scene activates */
+    #scene-letter.active .letter-content {
+      transform: translateX(-50%) translateY(-40px);
+      opacity: 1;
+    }
+
+
+    /* .letter {
+      background: #fff8ec;
+      padding: 24px;
+      border: 4px solid #000;
+      font-family: "Pixelify Sans";
+      transform: scale(0.8);
+      opacity: 0;
+      animation: popIn 1s forwards;
+    }
+
+    @keyframes popIn {
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    } */
+
+    .letter-image {
+      width: 320px;
+      image-rendering: pixelated;
+      animation: popIn 0.8s ease forwards;
+      cursor: pointer;
+    }
+
+    @keyframes popIn {
+      from {
+        transform: scale(0.85);
+        opacity: 0;
+      }
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    /* #map-ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.6s steps(4);
+}
+
+body.show-map #map-ui {
+  opacity: 1;
+  pointer-events: auto;
+} */
+
+#map-ui {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.6s steps(4);
+  pointer-events: none;
+}
+
+body.show-map #map-ui {
+  opacity: 1;
+}
+
+#dates-panel,
+#map-title {
+  pointer-events: auto;
+}
+
+
+.dates-frame {
+  position: absolute;
+  top: 10px;
+  left: 20px;
+  width: 250px;
+  height: 600px;
+  background-image: url("dates_panel.png");
+  padding: 40px 20px 20px 20px;
+}
+
+.dates-title {
+  font-size: 28px;
+  color: #000;
+  margin-bottom: 16px;
+  margin-left: 20px;
+}
+
+.dates-title {
+  animation: blink 1.2s steps(2) infinite;
+}
+
+@keyframes blink {
+  0%   { opacity: 1; }
+  49%  { opacity: 1; }
+  50%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* .dates-title {
+  animation: pulseBlink 1.6s steps(4) infinite;
+}
+
+@keyframes pulseBlink {
+  0%   { opacity: 1; color: #ff496a; }
+  50%  { opacity: 0.6; color: #ffd6e5; }
+  100% { opacity: 1; color: #ff496a; }
+} */
+
+
+.dates-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  max-height: 500px;     /* adjust to taste */
+  overflow-y: auto;     /* enables scrolling */
+  overflow-x: hidden;   /* prevents sideways scroll */
+  scroll-behavior: auto;
+}
+
+.dates-list li {
+  font-size: 18px;
+  margin-bottom: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dates-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dates-list::-webkit-scrollbar-track {
+  background: #ffd6e5;
+  border: 2px solid #000;
+}
+
+.dates-list::-webkit-scrollbar-thumb {
+  background: #ff496a;
+  border: 2px solid #000;
+}
+
+body.modal-open #map-ui {
+  opacity: 0;
+  pointer-events: none;
+}
+
+
+/* body.modal-open .dates-title {
+  animation-play-state: paused;
+} */
+
+/* .dates-frame::after {
+  content: "";
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  height: 24px;
+  background: linear-gradient(
+    to bottom,
+    rgba(255,122,168,0),
+    rgba(255,122,168,1)
+  );
+  pointer-events: none;
+} */
+
+
+#map-title {
+  position: absolute;
+  top: 40px;
+  right: 60px;
+  text-align: right;
+  font-size: 56px;
+  color: white;
+  line-height: 1.1;
+  text-shadow: 4px 4px #ff4f8b;
+  pointer-events: auto;
+}
+
+#map-title span {
+  font-size: 32px;
+  color: #ffd6e5;
+}
+
+
+    .scene.fade-out {
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+
+    #map-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    canvas {
+      display: block;
+      image-rendering: pixelated;
+    }
+
+    .pin-wrapper {
+      position: absolute;
+      transform: translate(-50%, -100%);
+      cursor: pointer;
+  }
+
+    .pin-canvas {
+      display: block;
+      z-index: 10;
+      image-rendering: pixelated;
+    }
+
+    .pin-label {
+      position: absolute;
+      top: -26px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 18px;
+      color: #000;
+      background: #ffb3cc;
+      padding: 2px 4px;
+      border: 2px solid #000;
+      display: none;
+      white-space: nowrap;
+    }
+
+    .pin-wrapper:hover .pin-label {
+      display: block;
+    }
+
+    /* hover bounce */
+    .pin-wrapper:hover {
+      transform: translate(-50%, -110%);
+      transition: transform 0.1s steps(2);
+    }
+
+
+.hidden {
+  display: none;
+}
+
+button {
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer; /* Makes the cursor a hand icon when hovered */
+}
+
+
+#memory-modal {
+  position: fixed;
+  display: flex; 
+  inset: 0;
+  background: rgba(255, 200, 220, 0.85);
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+#memory-modal.hidden {
+  display: none;
+}
+
+#memory-modal:not(.hidden) .modal-content {
+  animation: pop 0.2s steps(3);
+}
+
+@keyframes pop {
+  from { transform: scale(0); }
+  to   { transform: scale(1); }
+}
+
+.modal-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+#location-title {
+  grid-column: span 2;
+  font-size: 48px;
+  margin-bottom: 8px;   /* default is HUGE */
+  margin-top: 12px;
+  color: #ff496a;
+}
+
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.nav-buttons button {
+  font-size: 20px;
+  padding: 4px 12px;
+  border: 3px solid #000;
+  background: #ffd6e5;
+  cursor: pointer;
+}
+
+.nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.nav.left { left: -10px; }
+.nav.right { right: -10px; }
+
+#thumbnail-strip {
+  /* display: flex;
+  gap: 8px;
+
+  width: 100%;
+  height: 80px;              
+
+  overflow-x: auto;          
+  overflow-y: hidden;
+
+  padding: 4px;
+  box-sizing: border-box; */
+  /* display: flex;
+  gap: 8px;
+
+  height: 360px;              
+  width: 550px;
+
+  overflow-y: auto;           
+  overflow-x: scroll;
+
+  padding-right: 6px;
+  box-sizing: border-box; */
+
+  display: flex;
+  flex-direction: row;      /* 👈 rows first */
+  flex-wrap: wrap;          /* 👈 allows multiple rows */
+  /* gap: 8px; */
+
+  column-gap: 8px;   /* horizontal spacing */
+  row-gap: 12px;      /* 👈 reduce this */
+
+  width: 100%;
+  height: 500px;            /* 👈 fixed visible area */
+
+  overflow-y: auto;         /* 👈 scroll vertically */
+  overflow-x: hidden;
+
+  padding: 4px;
+  box-sizing: border-box;
+  align-content: flex-start;
+}
+
+#thumbnail-strip img {
+  /* width: 80px;
+  height: 80px;
+  border: 2px solid #000;
+  cursor: pointer; */
+
+  width: 80px;
+  height: 80px;
+
+  flex: 0 0 auto;           /* 👈 THIS prevents shrinking */
+  cursor: pointer;
+  image-rendering: pixelated;
+}
+
+#thumbnail-strip img.active {
+  outline: 3px solid #ff4f8b;
+}
+
+#close-modal {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 30px;
+  font-family: "Pixelify Sans", monospace;
+}
+
+.frame {
+  position: relative;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+}
+
+/* LEFT PHOTO FRAME */
+.photo-frame {
+  width: 560px;
+  height: 400px;
+  background-image: url("photo_frame.png");
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-frame img {
+  /* max-width: 90%;
+  max-height: 85%; */
+  max-height: 86%;
+  max-width: 92%;
+  margin-top: 15px;
+  /* image-rendering: pixelated; */
+}
+
+/* CAPTION */
+.caption-frame {
+  width: 528px;
+  height: 170px;
+  background-image: url("caption_frame.png");
+  padding: 1px 1px 1px 30px;
+  font-size: larger;
+  color: #ff496a;
+}
+
+/* CAPTION SCROLL AREA */
+#photo-caption-wrapper {
+  height: 80%;
+  overflow-y: auto;
+  padding-right: 25px;      /* breathing room for scrollbar */
+  box-sizing: border-box;
+}
+
+#photo-caption {
+  white-space: pre-line;
+}
+
+/* #photo-caption-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+#photo-caption-wrapper::-webkit-scrollbar-thumb {
+  background: #ff496a;
+  border: 2px solid #000;
+}
+
+#photo-caption-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+} */
+
+
+/* RIGHT GALLERY */
+.gallery-frame {
+  position: relative;
+  width: 560px; 
+  height: 550px;
+  margin-top: 20px;
+  background-image: url("photo-gallery_frame.png");
+  padding: 90px 12px 12px 30px;
+  overflow: visible;
+}
+
+.gallery-title {
+  position: absolute;
+  top: 50px;
+  left: 150px;
+  margin: 0;
+  font-size: 28px;
+  color: #ff496a;
+}
+
+  </style>
+</head>
+<body>
+
+  <!-- MAP LAYER (always exists) -->
+<div id="map-layer">
+  <div id="map-wrapper">
+    <canvas id="mapCanvas"></canvas>
+
+    <div class="pin-wrapper" data-memory="delhi" style="left: 31.2%; top: 30.5%;">
+      <canvas class="pin-canvas" width="20" height="24"></canvas>
+      <div class="pin-label">Delhi</div>
+    </div>
+
+    <div class="pin-wrapper" data-memory="jaipur" style="left: 27%; top: 38%;">
+      <canvas class="pin-canvas" width="20" height="24"></canvas>
+      <div class="pin-label">Jaipur</div>
+    </div>
+
+    <div class="pin-wrapper" data-memory="pune" style="left: 20.75%; top: 64.75%;">
+      <canvas class="pin-canvas" width="20" height="24"></canvas>
+      <div class="pin-label">Pune</div>
+    </div>
+
+    <div class="pin-wrapper" data-memory="hyderabad" style="left: 35.5%; top: 69%;">
+      <canvas class="pin-canvas" width="20" height="24"></canvas>
+      <div class="pin-label">Hyderabad</div>
+    </div>
+  </div>
+  <!-- MAP UI OVERLAY (ONLY SCENE 3) -->
+<div id="map-ui">
+  
+  <!-- LEFT DATES PANEL -->
+  <div id="dates-panel" class="frame dates-frame">
+    <h2 class="dates-title"><img src="red-heart.png" style="width: 12%; height: 69%;"> Our Firsts <img src="red-heart.png" style="width: 12%; height: 69%;"></h2>
+    <ul class="dates-list">
+      <li><img src="next.png" style="width: 5%;"> First Time We Met Each Other</li>
+      <li style="color: #ff496a; font-size: 15px;">5th Oct '24</li>
+      <li><img src="next.png" style="width: 5%;"> First Time We Talked</li>
+      <li style="color: #ff496a; font-size: 15px;">27th Jan '25</li>
+      <li><img src="next.png" style="width: 5%;"> First DM slide</li>
+      <li style="color: #ff496a; font-size: 15px;">12th Feb '25</li>
+      <li><img src="next.png" style="width: 5%;"> First Date</li>
+      <li style="color: #ff496a; font-size: 15px;">14th Feb '25</li>
+      <li><img src="next.png" style="width: 5%;"> First Boba (and Rice Beer)</li>
+      <li style="color: #ff496a; font-size: 15px;">19th Feb '25</li>
+      <li><img src="next.png" style="width: 5%;"> First Time We Were "Together"</li>
+      <li style="color: #ff496a; font-size: 15px;">14th Mar '25</li>
+      <li><img src="next.png" style="width: 5%;"> First Smoke Up Together</li>
+      <li style="color: #ff496a; font-size: 15px;">17th Mar '25</li>
+      <li><img src="next.png" style="width: 5%;"> First Gift I Got You (Vape) </li>
+      <li style="color: #ff496a; font-size: 15px;">19th Mar '25</li>
+      <li><img src="next.png" style="width: 5%;"> Day we went exclusive</li>
+      <li style="color: #ff496a; font-size: 15px;">1st Apr '25</li>
+      <!-- <li><img src="next.png" style="width: 5%;"> First (and Only) Drunk Public Kalesh As a Couple</li>
+      <li style="color: #ff496a; font-size: 15px;">6th Apr '25</li> -->
+      <li><img src="next.png" style="width: 5%;"> First Time We "Officially" called each other GF/BF</li>
+      <li style="color: #ff496a; font-size: 15px;">12th Apr '25</li>
+    </ul>
+  </div>
+
+  <!-- BIG TITLE -->
+  <h1 id="map-title">
+    Samarth 
+    <br /> & Mitali's
+    <br />
+    <span>Memory Map</span>
+  </h1>
+
+</div>
+
+</div>
+
+  <!-- SCENE 1: Envelope -->
+<div id="scene-envelope" class="scene active">
+  <!-- <img src="envelope.png" id="envelope" /> -->
+   <!-- <canvas
+  id="closed-envelope-canvas"
+  width="338"
+  height="209"
+  style="cursor:pointer"
+></canvas> -->
+<div class="envelope-container">
+    <canvas
+      id="closed-envelope-canvas"
+      width="338"
+      height="209"
+    ></canvas>
+  </div>
+</div>
+
+
+
+<!-- SCENE 2: Letter -->
+<div id="scene-letter" class="scene hidden">
+  <!-- <img
+    src="open_envelope.png"
+    class="letter-image"
+  /> -->
+  <div class="envelope-container">
+
+    <!-- Open envelope -->
+    <canvas id="open-envelope-canvas" width="388" height="312"></canvas>
+
+    <!-- Letter / text -->
+    <div class="letter-content">
+      <img src="[TEXT]Memory Map.png" class="letter-text" />
+    </div>
+
+  </div>
+</div>
+
+<!-- SCENE 3: Map -->
+<!-- <div id="scene-map" class="scene hidden">
+   <div id="map-wrapper">
+  <canvas id="mapCanvas"></canvas>
+  <div class="pin-wrapper" data-memory="delhi" style="left: 31.2%; top: 30.5%;">
+    <canvas class="pin-canvas" width="20" height="24"></canvas>
+    <div class="pin-label">Delhi</div>
+  </div>
+
+  <div class="pin-wrapper" data-memory="jaipur" style="left: 27%; top: 38%;">
+    <canvas class="pin-canvas" width="20" height="24"></canvas>
+    <div class="pin-label">Jaipur</div>
+  </div>
+
+  <div class="pin-wrapper" data-memory="pune" style="left: 20.75%; top: 64.75%;">
+    <canvas class="pin-canvas" width="20" height="24"></canvas>
+    <div class="pin-label">Pune</div>
+  </div>
+
+  <div class="pin-wrapper" data-memory="hyderabad" style="left: 35.5%; top: 69%;">
+    <canvas class="pin-canvas" width="20" height="24"></canvas>
+    <div class="pin-label">Hyderabad</div>
+  </div>
+  </div>
+</div> -->
+
+  <div id="memory-modal" class="hidden">
+    <div class="modal-content memory-layout">
+
+      <!-- LEFT PANEL -->
+      <div class="left-panel">
+        <h1 id="location-title" style="font-size: 75px;">DELHI</h1> 
+  
+        <div class="frame photo-frame">
+          <button id="prev-btn" class="nav left"><img src="prev.png" style="width: 85%;"></button>
+          <img id="main-photo" />
+          <button id="next-btn" class="nav right"><img src="next.png" style="width: 85%;"></button>
+        </div>
+  
+        <div class="frame caption-frame">
+          <div id="photo-caption-wrapper"> 
+            <p id="photo-caption">Caption goes here...</p>
+          </div>
+        </div>
+      </div>
+  
+      <!-- RIGHT PANEL -->
+      <div class="right-panel">  
+        <div class="frame gallery-frame">
+          <h2 class="gallery-title"><img src="pink-heart.png" style="width: 6%; height: 69%;"> Photo Gallery <img src="pink-heart.png" style="width: 6%; height: 5%;"></h2>
+          <div id="thumbnail-strip"></div>
+        </div>
+      </div>
+    </div>
+    <button id="close-modal">✕</button>
+  </div>
+  
+  <script src="script.js"></script>
+</body>
+</html>
